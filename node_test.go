@@ -1,4 +1,4 @@
-package LibraDB
+package main
 
 import (
 	"bytes"
@@ -183,7 +183,7 @@ func Test_SplitAndMerge(t *testing.T) {
 	require.NoError(t, err)
 
 	removeTx := db.WriteTx()
-	collection , err = removeTx.GetCollection(collection.name)
+	collection, err = removeTx.GetCollection(collection.name)
 	require.NoError(t, err)
 
 	err = collection.Remove(val)

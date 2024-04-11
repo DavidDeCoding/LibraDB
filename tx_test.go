@@ -1,4 +1,4 @@
-package LibraDB
+package main
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -93,7 +93,6 @@ func TestTx_OpenReadAndWriteTxSimultaneously(t *testing.T) {
 			err = tx3.Commit()
 			wg.Done()
 		}()
-
 
 		_, err := tx2.CreateCollection(testCollectionName)
 		require.NoError(t, err)

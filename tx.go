@@ -1,20 +1,24 @@
-package LibraDB
+package main
 
 type tx struct {
-	dirtyNodes    map[pgnum]*Node
-	pagesToDelete []pgnum
+	metaRoot         *pgnum
+	dirtyNodes       map[pgnum]*Node
+	dirtyCollections map[string]*Collection
+	pagesToDelete    []pgnum
 
 	// new pages allocated during the transaction. They will be released if rollback is called.
 	allocatedPageNums []pgnum
 
 	write bool
 
-	db   *DB
+	db *DB
 }
 
 func newTx(db *DB, write bool) *tx {
 	return &tx{
+		nil,
 		map[pgnum]*Node{},
+		map[string]*Collection{},
 		make([]pgnum, 0),
 		make([]pgnum, 0),
 		write,
@@ -63,7 +67,9 @@ func (tx *tx) Rollback() {
 	}
 
 	tx.dirtyNodes = nil
+	tx.dirtyCollections = nil
 	tx.pagesToDelete = nil
+	tx.metaRoot = nil
 	for _, pageNum := range tx.allocatedPageNums {
 		tx.db.freelist.releasePage(pageNum)
 	}
@@ -92,13 +98,18 @@ func (tx *tx) Commit() error {
 		return err
 	}
 
+	tx.db.meta.root = *tx.metaRoot
+	_, err = tx.db.writeMeta(tx.db.meta)
+	if err != nil {
+		return err
+	}
+
 	tx.dirtyNodes = nil
 	tx.pagesToDelete = nil
 	tx.allocatedPageNums = nil
 	tx.db.rwlock.Unlock()
 	return nil
 }
-
 
 // This will be used for implementing COW. The idea is to mark all the dirty collection, then for each collection,
 // traverse it's dirty in post order and commit child page. Then take the new page numbers, assign them to the parent,
@@ -141,13 +152,21 @@ func (tx *tx) Commit() error {
 //}
 
 func (tx *tx) getRootCollection() *Collection {
+	metaRoot := tx.db.root
+	if tx.metaRoot != nil {
+		metaRoot = *tx.metaRoot
+	}
 	rootCollection := newEmptyCollection()
-	rootCollection.root = tx.db.root
+	rootCollection.root = metaRoot
 	rootCollection.tx = tx
 	return rootCollection
 }
 
 func (tx *tx) GetCollection(name []byte) (*Collection, error) {
+	if collection, ok := tx.dirtyCollections[string(name)]; ok {
+		return collection, nil
+	}
+
 	rootCollection := tx.getRootCollection()
 	item, err := rootCollection.Find(name)
 	if err != nil {
@@ -191,6 +210,23 @@ func (tx *tx) DeleteCollection(name []byte) error {
 
 }
 
+func (tx *tx) updateCollection(collection *Collection) (*Collection, error) {
+	if !tx.write {
+		return nil, writeInsideReadTxErr
+	}
+
+	collectionBytes := collection.serialize()
+
+	rootCollection := tx.getRootCollection()
+
+	err := rootCollection.Put(collection.name, collectionBytes.value)
+	if err != nil {
+		return nil, err
+	}
+
+	return collection, nil
+}
+
 func (tx *tx) createCollection(collection *Collection) (*Collection, error) {
 	collection.tx = tx
 	collectionBytes := collection.serialize()
@@ -200,6 +236,8 @@ func (tx *tx) createCollection(collection *Collection) (*Collection, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	tx.metaRoot = &rootCollection.root
 
 	return collection, nil
 }

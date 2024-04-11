@@ -1,4 +1,4 @@
-package LibraDB
+package main
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ const (
 	testMinPercentage = 0.2
 	testMaxPercentage = 0.55
 	testValSize       = 255
-	
+
 	mockNumberOfElements = 10
 	expectedFolderPath   = "expected"
 )
@@ -99,7 +99,7 @@ func getExpectedResultFileName(name string) string {
 
 func getTempFileName() string {
 	var id = uuid.New()
-	return fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator,id)
+	return fmt.Sprintf("%s%c%s", os.TempDir(), os.PathSeparator, id)
 }
 
 func memset(buf []byte, count int) []byte {

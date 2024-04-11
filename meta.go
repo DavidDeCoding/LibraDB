@@ -1,10 +1,10 @@
-package LibraDB
+package main
 
 import "encoding/binary"
 
 const (
 	magicNumber uint32 = 0xD00DB00D
-	metaPageNum = 0
+	metaPageNum        = 0
 )
 
 // meta is the meta page of the db

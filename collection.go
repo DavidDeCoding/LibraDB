@@ -1,4 +1,4 @@
-package LibraDB
+package main
 
 import (
 	"bytes"
@@ -6,13 +6,12 @@ import (
 )
 
 type Collection struct {
-	name []byte
-	root pgnum
+	name    []byte
+	root    pgnum
 	counter uint64
 
 	// associated transaction
 	tx *tx
-
 }
 
 func newCollection(name []byte, root pgnum) *Collection {
@@ -124,6 +123,7 @@ func (c *Collection) Put(key []byte, value []byte) error {
 		newRoot = c.tx.writeNode(newRoot)
 
 		c.root = newRoot.pageNum
+		c.tx.updateCollection(c)
 	}
 
 	return nil
@@ -202,16 +202,19 @@ func (c *Collection) Remove(key []byte) error {
 	// If the root has no items after rebalancing, there's no need to save it because we ignore it.
 	if len(rootNode.items) == 0 && len(rootNode.childNodes) > 0 {
 		c.root = ancestors[1].pageNum
+		c.tx.updateCollection(c)
 	}
 
 	return nil
 }
 
 // getNodes returns a list of nodes based on their indexes (the breadcrumbs) from the root
-//           p
-//       /       \
-//     a          b
-//  /     \     /   \
+//
+//	         p
+//	     /       \
+//	   a          b
+//	/     \     /   \
+//
 // c       d   e     f
 // For [0,1,0] -> p,b,e
 func (c *Collection) getNodes(indexes []int) ([]*Node, error) {

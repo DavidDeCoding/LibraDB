@@ -1,4 +1,4 @@
-package LibraDB
+package main
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 )
 
 type DB struct {
-	rwlock   sync.RWMutex   // Allows only one writer at a time
+	rwlock sync.RWMutex // Allows only one writer at a time
 	*dal
 }
 

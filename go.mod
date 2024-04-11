@@ -1,4 +1,4 @@
-module github.com/amit-davidson/LibraDB
+module github.com/amit-davidson/main
 
 go 1.17
 
